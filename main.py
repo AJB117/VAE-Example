@@ -91,7 +91,6 @@ def main(args: Args):
             model = VAE_CNN(
                 latent_dim=args.latent_dim, latents_to_sample=args.latents_to_sample
             )
-            model.load_state_dict(torch.load("vae_cnn.pth"))
         else:
             model = VAE_MLP(
                 in_dim=784,
@@ -99,9 +98,10 @@ def main(args: Args):
                 hidden_layer_sizes=args.hidden_layer_sizes,
                 latents_to_sample=args.latents_to_sample,
             )
-            model.load_state_dict(torch.load("vae_mlp.pth"))
 
+        model.load_state_dict(torch.load(f"vae_{args.save_name}.pth"))
         model = model.to(device)
+
         case_study(model, args.num_images, test.data, args.model_type, device)
         return
 
@@ -152,7 +152,8 @@ def main(args: Args):
         model.train()
         train_loss = 0
 
-        for batch in tqdm(train_loader):
+        for batch in train_loader:
+            # for batch in tqdm(train_loader):
             batch[0] = batch[0].to(device)
             if args.model_type == "cnn":
                 x = batch[0].float()
@@ -211,6 +212,7 @@ def main(args: Args):
     plt.legend()
     plt.xlabel("Iterations")
     plt.ylabel("Loss")
+    plt.title("Loss types over time")
     plt.savefig(f"loss_curves_{save_name}.png")
     plt.show()
 
