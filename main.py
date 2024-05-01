@@ -1,17 +1,22 @@
 import torch
-import torch.nn as nn
 import argparse
 import torchvision as tv
 import matplotlib.pyplot as plt
 import torchvision
 import random
-from dataclasses import dataclass
+import seaborn as sb
+import numpy as np
 
+from dataclasses import dataclass
 from torch import Tensor
 from tqdm import tqdm
 from torchvision import transforms
 from models import VAE_MLP, VAE_CNN
-from typing import Tuple
+from typing import Tuple, Union
+from sklearn.manifold import TSNE
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.random_projection import SparseRandomProjection
+from matplotlib import offsetbox
 
 
 @dataclass
@@ -26,6 +31,7 @@ class Args:
     model_type: str
     latents_to_sample: int
     save_name: str
+    viz_latent: str
 
 
 def loss_fn(
@@ -40,8 +46,85 @@ def loss_fn(
     return recon_loss, kl_div
 
 
+# From https://scikit-learn.org/stable/auto_examples/manifold/plot_lle_digits.html
+def plot_embedding(X, images, labels, title):
+    _, ax = plt.subplots()
+    X = MinMaxScaler().fit_transform(X)
+
+    targets = images.targets[: len(labels)]
+    for label in labels:
+        ax.scatter(
+            *X[targets == label].T,
+            marker=f"${label}$",
+            s=60,
+            color=plt.cm.Dark2(label),
+            alpha=0.425,
+            zorder=2,
+        )
+
+    shown_images = np.array([[1.0, 1.0]])
+    for i in range(X.shape[0]):
+        dist = np.sum((X[i] - shown_images) ** 2, 1)
+
+        if np.min(dist) < 4e-3:
+            continue
+
+        shown_images = np.concatenate([shown_images, [X[i]]], axis=0)
+        imagebox = offsetbox.AnnotationBbox(
+            offsetbox.OffsetImage(images[i][0].squeeze(0), cmap=plt.cm.gray_r), X[i]
+        )
+
+        imagebox.set(zorder=1)
+        ax.add_artist(imagebox)
+
+        ax.set_title(title)
+        ax.axis("off")
+
+
+
+def viz_latent_space(
+    model: Union[VAE_MLP, VAE_CNN],
+    test_data: torchvision.datasets.MNIST,
+    device: torch.device = torch.device("cpu"),
+    model_type: str = "mlp",
+) -> None:
+    model.eval()
+    print(model)
+
+    random_indices = [random.randint(0, len(test_data) - 1) for _ in range(100)]
+    images = test_data.data[random_indices]
+
+    with torch.no_grad():
+        if model_type == "cnn":
+            x = images.unsqueeze(0).unsqueeze(0).float()
+        else:
+            x = images.view(-1, 784).float()
+
+        x = x.to(device)
+
+        mean, var = model.encoder(x)
+        z = model.reparameterize(mean, var)
+
+        _, axarr = plt.subplots(1, 2)
+
+        z = z.cpu().numpy()
+        # z = TSNE(
+        #     n_components=2,
+        #     n_iter=500,
+        #     n_iter_without_progress=150,
+        #     n_jobs=2,
+        # ).fit_transform(z)
+        z = SparseRandomProjection(
+                n_components=2, random_state=42
+            ).fit_transform(z)
+        y = test_data.targets[random_indices].numpy()
+        plot_embedding(z, test_data, y, "t-SNE embedding of the digits")
+
+        plt.show()
+
+
 def case_study(
-    model: nn.Module,
+    model: Union[VAE_MLP, VAE_CNN],
     num_images: int,
     test_data: torchvision.datasets.MNIST,
     model_type: str,
@@ -86,7 +169,7 @@ def main(args: Args):
         root="./data", train=False, download=True, transform=transforms.ToTensor()
     )
 
-    if args.case_study:
+    if args.case_study or args.viz_latent:
         if args.model_type == "cnn":
             model = VAE_CNN(
                 latent_dim=args.latent_dim, latents_to_sample=args.latents_to_sample
@@ -99,10 +182,16 @@ def main(args: Args):
                 latents_to_sample=args.latents_to_sample,
             )
 
-        model.load_state_dict(torch.load(f"vae_{args.save_name}.pth"))
+        model.load_state_dict(
+            torch.load(f"vae_{args.save_name}.pth", map_location=device)
+        )
         model = model.to(device)
 
-        case_study(model, args.num_images, test.data, args.model_type, device)
+        if args.case_study:
+            case_study(model, args.num_images, test.data, args.model_type, device)
+        elif args.viz_latent:
+            viz_latent_space(model, test, device, args.model_type)
+
         return
 
     n = train.data.shape[1] ** 2
@@ -232,8 +321,12 @@ if __name__ == "__main__":
         "--hidden_layer_sizes", type=int, nargs="+", default=[212, 192, 128]
     )
 
+    # visualizaiton of images
     parser.add_argument("--case_study", action="store_true")
     parser.add_argument("--num_images", type=int, default=10)
+
+    # visualization of the latent code
+    parser.add_argument("--viz_latent", action="store_true")
 
     args = parser.parse_args()
     args = Args(**vars(args))
