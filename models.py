@@ -1,3 +1,4 @@
+import pdb
 import torch
 import torch.nn as nn
 
@@ -152,8 +153,8 @@ def ddpm_schedules(beta1: float, beta2: float, T: int) -> Dict[str, torch.Tensor
 
 def block(in_dim: int, out_dim: int):
     return nn.Sequential(
-        nn.Linear(in_dim, out_dim),
-        nn.BatchNorm1d(out_dim),
+        nn.Conv2d(in_dim, out_dim, 7, padding=3),
+        nn.BatchNorm2d(out_dim),
         nn.ReLU(),
     )
 
@@ -172,7 +173,7 @@ class DummyEpsModel(nn.Module):
             nn.Conv2d(64, n_channel, 3, padding=1),
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x, t) -> torch.Tensor:
         return self.conv(x)
 
 
@@ -213,8 +214,11 @@ class DDPM(nn.Module):
 
         return self.criterion(eps, self.eps_model(x_t, _ts / self.n_T))
 
-    def sample(self, n_sample: int, size, device) -> torch.Tensor:
+    def sample(
+        self, n_sample: int, size, device, return_trajectory=False
+    ) -> torch.Tensor:
         x_i = torch.randn(n_sample, *size).to(device)  # x_T ~ N(0, 1)
+        trajectory = []
 
         # This samples accordingly to Algorithm 2. It is exactly the same logic.
         for i in range(self.n_T, 0, -1):
@@ -224,5 +228,11 @@ class DDPM(nn.Module):
                 self.oneover_sqrta[i] * (x_i - eps * self.mab_over_sqrtmab[i])
                 + self.sqrt_beta_t[i] * z
             )
+
+            if return_trajectory:
+                trajectory.append(x_i)
+
+        if return_trajectory:
+            return x_i, trajectory
 
         return x_i
