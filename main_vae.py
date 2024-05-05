@@ -4,18 +4,14 @@ import torchvision as tv
 import matplotlib.pyplot as plt
 import torchvision
 import random
-import seaborn as sb
 import numpy as np
 
 from dataclasses import dataclass
 from torch import Tensor
-from tqdm import tqdm
 from torchvision import transforms
 from models import VAE_MLP, VAE_CNN
 from typing import Tuple, Union
-from sklearn.manifold import TSNE
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.random_projection import SparseRandomProjection
 from matplotlib import offsetbox
 
 
@@ -108,7 +104,7 @@ def viz_latent_space(
 
         z = z.cpu().numpy()
         y = test_data.targets[random_indices].numpy()
-        plot_embedding(z, test_data, y, "t-SNE embedding of the digits")
+        plot_embedding(z, test_data, y, "Latent embedding of the digits")
 
         plt.show()
 
