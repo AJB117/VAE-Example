@@ -41,8 +41,7 @@ Figure 3 in the report.
 
 ### DDPM Trajectory
 
-<p align="center">
-  <img src="ddpm_trajectory.gif" alt="DDPM Trajectory">
-</p>
+![DDPM Trajectory](ddpm-trajectory.png)
+
 
 As mentioned in the code, we thank the authors of `https://github.com/cloneofsimo/minDiffusion` for their implementation of DDPM.
