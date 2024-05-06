@@ -159,9 +159,9 @@ def block(in_dim: int, out_dim: int):
     )
 
 
-class DummyEpsModel(nn.Module):
+class SimpleConvModel(nn.Module):
     def __init__(self, n_channel: int) -> None:
-        super(DummyEpsModel, self).__init__()
+        super(SimpleConvModel, self).__init__()
         self.conv = nn.Sequential(  # with batchnorm
             block(n_channel, 64),
             block(64, 128),
@@ -188,7 +188,6 @@ class DDPM(nn.Module):
         super(DDPM, self).__init__()
         self.eps_model = eps_model
 
-        # register_buffer allows us to freely access these tensors by name. It helps device placement.
         for k, v in ddpm_schedules(betas[0], betas[1], n_T).items():
             self.register_buffer(k, v)
 
