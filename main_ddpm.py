@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from dataclasses import dataclass
 from tqdm import tqdm
 from torchvision import transforms
-from models import DDPM, DummyEpsModel
+from models import DDPM, SimpleConvModel
 from typing import Tuple
 
 
@@ -52,7 +52,6 @@ def case_study(
     with torch.no_grad():
         x_i = model.sample(num_images, (1, 28, 28), device)
 
-        # make a grid of images using plt
         fig, ax = plt.subplots(1, num_images, figsize=(20, 20))
         for i in range(num_images):
             ax[i].imshow(x_i[i].view(28, 28).cpu(), cmap="gray")
@@ -65,7 +64,7 @@ def case_study(
 def main(args: Args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = DDPM(eps_model=DummyEpsModel(1), betas=args.betas, n_T=args.n_steps)
+    model = DDPM(eps_model=SimpleConvModel(1), betas=args.betas, n_T=args.n_steps)
     model.to(device)
 
     if args.viz_trajectory:
