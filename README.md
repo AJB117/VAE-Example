@@ -4,7 +4,7 @@ Project for Probabilistic Machine Learning
 
 ## Report
 
-We write a paper describing image generation models and from a probabilistic perspective, which can be found in report.pdf. We cover the math behind variational autoencoders and diffusion models and explain the connection between the two.
+We write a paper describing image generation models from a probabilistic perspective, which can be found in report.pdf. We cover the math behind variational autoencoders and diffusion models and explain the connection between the two.
 
 ## Installation
 
